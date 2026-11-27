@@ -1,0 +1,50 @@
+{
+  "model_source": "",
+  "model_dtype": "auto",
+  "device": "auto",
+  "task": "sft",
+  "dataset_specs": [
+    {"source": "HuggingFaceH4/no_robots", "split": "train", "weight": 1.0}
+  ],
+  "dataset_cache": "",
+  "data": {
+    "context_length": 32768,
+    "examples_per_step": 0,
+    "max_sequences": 4000,
+    "val_ratio": 0.02,
+    "min_chars": 10,
+    "dedup": true,
+    "seed": 0,
+    "dataset_order": "front",
+    "long_doc_structure": true,
+    "long_doc_min_chars": 1200,
+    "long_doc_min_sentences": 4,
+    "long_doc_max_docs": 512,
+    "long_doc_tail_chars": 16000,
+    "long_doc_prefix_tokens": 64
+  },
+  "val_tokens": 4096,
+  "ascot": {
+    "span_length": 128, "num_spans": 4, "sink_len": 16, "prefix_len": 48,
+    "slice_size": 4, "mode": "global", "head_positions": 64,
+    "head_lr_scale": 0.10, "slice_sampling": "balanced",
+    "shadow_refresh_every": 4, "uniform_floor": 0.25,
+    "block_size": 512, "max_grad_norm": 1.0, "long_plan_tokens": 64
+  },
+  "lr": 5e-6, "weight_decay": 0.01, "scheduler": "cosine",
+  "warmup_steps": 20, "total_steps": 0, "eval_every": 20,
+  "guard_mode": "restart",
+  "val_patience": 1, "val_min_delta": 0.001,
+  "export_best": true,
+  "restart_lr_mode": "harmonic", "restart_lr_decay": 0.5,
+  "restart_lr_floor": 1e-8, "max_restarts": 0,
+  "train_probe_tokens": 512,
+  "grad_spike_mode": "off", "grad_spike_threshold_pct": 100, "grad_spike_window": 20,
+  "max_hours": 0, "max_epochs": 1,
+  "checkpoint_every": 100, "checkpoint_keep_last": 2,
+  "checkpoint_keep_every": 500, "checkpoint_optimizer": false,
+  "checkpoint_delta_dtype": "int8",
+  "auto_export": true, "export_name": "finetuned",
+  "save_plots": true,
+  "log_every": 1, "lang": "ja", "run_name": "run1"
+}

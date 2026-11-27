@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CPU-FineTuning</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">CPU-FineTuning <span class="sub" id="ver"></span></div>
+  <div class="spacer"></div>
+  <div class="langbox">
+    <button id="lang-ja">日本語</button>
+    <button id="lang-en">English</button>
+  </div>
+</header>
+
+<nav id="tabs">
+  <button data-tab="model" class="active">モデル</button>
+  <button data-tab="data">データセット</button>
+  <button data-tab="train">学習設定</button>
+  <button data-tab="results">結果</button>
+</nav>
+
+<main>
+<!-- ============================== MODEL ============================== -->
+<section id="tab-model" class="tab active">
+  <div class="card">
+    <h2 id="t-model-src"></h2>
+    <div class="row">
+      <input id="model-source" style="flex:1" placeholder="HuggingFace ID またはローカルフォルダのパス / HF repo id or local folder path">
+      <button id="btn-model-info">情報取得</button>
+    </div>
+    <p class="hint" id="h-model-src"></p>
+    <div id="model-info" class="info-grid"></div>
+    <div class="row">
+      <label id="l-device"></label>
+      <select id="model-device">
+        <option value="auto" selected>auto（CUDA → MPS → CPU）</option>
+        <option value="cuda">CUDA / GPU</option>
+        <option value="cpu">CPU</option>
+        <option value="mps">Apple MPS</option>
+      </select>
+      <label id="l-dtype" style="margin-left:16px"></label>
+      <select id="model-dtype">
+        <option value="auto" selected>auto（デバイスに合わせる / device-aware）</option>
+        <option value="bfloat16">bfloat16（省メモリ / low RAM）</option>
+        <option value="float16">float16（CUDA 高速 / fast CUDA）</option>
+        <option value="float32">float32（高精度・メモリ多消費 / precise）</option>
+      </select>
+    </div>
+    <div class="supported" id="supported-models"></div>
+  </div>
+</section>
+
+<!-- ============================== DATA ============================== -->
+<section id="tab-data" class="tab">
+  <div class="card">
+    <h2 id="t-data-sources"></h2>
+    <p class="hint" id="h-data-sources"></p>
+    <table id="sources-table">
+      <thead><tr id="sources-header"></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="row">
+      <button id="btn-add-source">＋ ソース追加</button>
+      <button id="btn-preview">選択ソースをプレビュー</button>
+    </div>
+    <div id="preview-box" style="display:none">
+      <h3 id="t-raw-preview"></h3>
+      <div id="preview-out" class="preview"></div>
+      <h3 id="t-norm-preview"></h3>
+      <div id="preview-table"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 id="t-data-build"></h2>
+    <div class="grid3">
+      <div><label id="l-ctx"></label>
+        <select id="d-ctx-sel">
+          <option value="4096">4,096</option>
+          <option value="8192">8,192</option>
+          <option value="12288">12,288</option>
+          <option value="16384" selected>16,384</option>
+          <option value="24576">24,576</option>
+          <option value="32768">32,768</option>
+          <option value="49152">49,152</option>
+          <option value="65536">65,536</option>
+          <option value="custom">custom…</option>
+        </select>
+      </div>
+      <div><label>&nbsp;</label>
+        <input id="d-ctx" type="number" value="16384" min="512" step="512" style="display:none">
+      </div>
+      <div><label id="l-eps"></label><input id="d-eps" type="number" value="0" min="0"></div>
+      <div><label id="l-maxseq"></label><input id="d-maxseq" type="number" value="4000" min="0"></div>
+      <div><label id="l-val-ratio"></label><input id="d-val" type="number" value="0.02" min="0" max="0.5" step="0.01"></div>
+      <div><label id="l-min-chars"></label><input id="d-minch" type="number" value="10" min="0"></div>
+      <div><label id="l-dedup"></label><select id="d-dedup"><option value="true">ON</option><option value="false">OFF</option></select></div>
+      <div><label id="l-seed"></label><input id="d-seed" type="number" value="0"></div>
+      <div><label id="l-order"></label><select id="d-order">
+        <option value="front" selected>先頭から順に（小データを前半に混合）</option>
+        <option value="shuffle">全体をシャッフル</option>
+      </select></div>
+      <div><label id="l-longdoc"></label><select id="d-longdoc"><option value="true">ON</option><option value="false">OFF</option></select></div>
+      <div><label id="l-longdoc-min"></label><input id="d-longdoc-min" type="number" value="1200" min="200"></div>
+      <div><label id="l-longdoc-sent"></label><input id="d-longdoc-sent" type="number" value="4" min="1"></div>
+      <div><label id="l-longdoc-max"></label><input id="d-longdoc-max" type="number" value="512" min="0"></div>
+      <div><label id="l-longdoc-tail"></label><input id="d-longdoc-tail" type="number" value="16000" min="1000" step="1000"></div>
+      <div><label id="l-longdoc-prefix"></label><input id="d-longdoc-prefix" type="number" value="64" min="8" max="128"></div>
+    </div>
+    <p class="hint" id="h-order"></p>
+    <div class="row">
+      <label id="l-datacache"></label>
+      <select id="d-cache" style="min-width:360px;max-width:100%"></select>
+      <button id="btn-cache-refresh" type="button">更新 / refresh</button>
+    </div>
+    <p class="hint" id="h-datacache"></p>
+    <div class="row">
+      <button id="btn-build" class="primary">データセット構築</button>
+      <span id="build-status"></span>
+    </div>
+    <div id="build-progress-wrap" style="display:none">
+      <div class="bar"><div id="build-bar"></div></div>
+      <div id="build-percent" class="hint"></div>
+    </div>
+    <div id="build-progress" class="preview" style="display:none"></div>
+    <div id="build-stats" class="info-grid"></div>
+    <div id="build-order"></div>
+    <div id="build-preview"></div>
+    <h3 id="t-cached"></h3>
+    <div id="cached-list"></div>
+  </div>
+</section>
+
+<!-- ============================== TRAIN ============================== -->
+<section id="tab-train" class="tab">
+  <div class="card">
+    <h2 id="t-train-basic"></h2>
+    <div class="grid3">
+      <div><label id="l-task"></label>
+        <select id="t-task"><option value="sft">SFT（指示チューニング）</option><option value="pt">PT（継続事前学習）</option></select></div>
+      <div><label id="l-preset"></label>
+        <select id="t-preset"><option value="speed">speed（最速）</option><option value="balanced" selected>balanced（推奨）</option><option value="quality">quality（高品質）</option><option value="custom">custom</option></select></div>
+      <div><label id="l-steps"></label><input id="t-steps" type="number" value="0" min="0"></div>
+      <div><label id="l-lr-sci"></label><input id="t-lr-sci" value="5e-6" spellcheck="false"></div>
+      <div><label id="l-lr-dec"></label><input id="t-lr-dec" value="0.000005" spellcheck="false"></div>
+      <div><label id="l-wd"></label><input id="t-wd" type="number" value="0.01" step="0.005"></div>
+      <div><label id="l-sched"></label><select id="t-sched"><option>cosine</option><option>linear</option><option>constant</option></select></div>
+      <div><label id="l-warmup"></label><input id="t-warmup" type="number" value="20" min="0"></div>
+      <div><label id="l-eval"></label><input id="t-eval" type="number" value="20" min="0"></div>
+      <div><label id="l-runname"></label><input id="t-runname" value="run1"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 id="t-limits"></h2>
+    <div class="grid3">
+      <div><label id="l-maxhours"></label><input id="t-maxhours" type="number" value="0" min="0" step="0.5"></div>
+      <div><label id="l-maxepochs"></label><input id="t-maxepochs" type="number" value="1" min="0"></div>
+    </div>
+    <p class="hint" id="h-limits"></p>
+  </div>
+  <div class="card">
+    <h2 id="t-guard">検証ECガード（最良モデル・停止・自動再開）</h2>
+    <div class="grid3">
+      <div><label id="l-guardmode"></label>
+        <select id="t-guardmode">
+          <option value="restart">再開（LRを下げて最良点から再試行）</option>
+          <option value="stop">停止（最良点で停止）</option>
+          <option value="off">無効（固定予算で最後まで学習）</option>
+        </select></div>
+      <div><label id="l-exportbest"></label>
+        <select id="t-exportbest"><option value="true">ON</option><option value="false">OFF</option></select></div>
+      <div><label id="l-patience"></label><input id="t-patience" type="number" value="1" min="1" max="20"></div>
+      <div><label id="l-mindelta"></label><input id="t-mindelta" type="number" value="0.001" min="0" step="0.0005"></div>
+      <div><label id="l-restartmode"></label>
+        <select id="t-restartmode" data-restart-only="1">
+          <option id="opt-restart-harmonic" value="harmonic">1/n（調和）</option>
+          <option id="opt-restart-exp" value="exponential">倍率（指数）</option>
+        </select></div>
+      <div><label id="l-restartdecay"></label><input id="t-restartdecay" data-restart-only="1" data-exp-only="1" type="number" value="0.5" min="0.05" max="1" step="0.05"></div>
+      <div><label id="l-restartfloor"></label><input id="t-restartfloor" data-restart-only="1" type="number" value="1e-8" min="0" step="1e-9"></div>
+      <div><label id="l-maxrestarts"></label><input id="t-maxrestarts" data-restart-only="1" type="number" value="0" min="0" max="1000"></div>
+      <div><label id="l-probe"></label><input id="t-probe" type="number" value="512" min="0" step="128"></div>
+    </div>
+    <p class="hint" id="h-guard"></p>
+    <p class="hint" id="guard-explain"></p>
+  </div>
+  <div class="card">
+    <h2 id="t-estimate">所要時間の推定</h2>
+    <div class="row">
+      <button id="btn-estimate">推定する</button>
+      <span id="estimate-note" class="hint"></span>
+    </div>
+    <div id="estimate-out" class="info-grid"></div>
+  </div>
+  <div class="card">
+    <h2 id="t-spike"></h2>
+    <div class="grid3">
+      <div><label id="l-spike-mode"></label>
+        <select id="t-spikemode">
+          <option value="off">無効 / off</option>
+          <option value="skip">スキップ（異常ステップの更新を中止）</option>
+          <option value="scale">縮小（更新量を通常水準に縮小）</option>
+        </select></div>
+      <div><label id="l-spike-pct"></label><input id="t-spikepct" type="number" value="100" min="1"></div>
+      <div><label id="l-spike-win"></label><input id="t-spikewin" type="number" value="20" min="2"></div>
+    </div>
+    <p class="hint" id="h-spike"></p>
+  </div>
+  <div class="card">
+    <details>
+      <summary id="t-ascot-adv">ASCOT 詳細設定（上級者向け）</summary>
+      <div class="grid3">
+        <div><label>span_length</label><input id="a-span" type="number" value="128" min="16">
+          <p class="fdesc" id="ad-span"></p></div>
+        <div><label>num_spans</label><input id="a-spans" type="number" value="4" min="1">
+          <p class="fdesc" id="ad-spans"></p></div>
+        <div><label>prefix_len</label><input id="a-prefix" type="number" value="48" min="0">
+          <p class="fdesc" id="ad-prefix"></p></div>
+        <div><label>long_plan_tokens</label><input id="a-plan" type="number" value="64" min="0" max="256">
+          <p class="fdesc" id="ad-plan"></p></div>
+        <div><label>sink_len</label><input id="a-sink" type="number" value="16" min="0">
+          <p class="fdesc" id="ad-sink"></p></div>
+        <div><label>slice_size</label><input id="a-slice" type="number" value="4" min="1">
+          <p class="fdesc" id="ad-slice"></p></div>
+        <div><label>mode</label><select id="a-mode"><option>auto</option><option>global</option><option>local</option></select>
+          <p class="fdesc" id="ad-mode"></p></div>
+        <div><label>head_positions</label><input id="a-head" type="number" value="64" min="0">
+          <p class="fdesc" id="ad-head"></p></div>
+        <div><label>head_lr_scale</label><input id="a-headlr" type="number" value="0.10" min="0.01" max="1" step="0.01">
+          <p class="fdesc" id="ad-headlr"></p></div>
+        <div><label>slice_sampling</label><select id="a-sample"><option value="balanced" selected>balanced</option><option value="adaptive">adaptive</option><option value="uniform">uniform</option><option value="top">top</option></select>
+          <p class="fdesc" id="ad-sample"></p></div>
+        <div><label>shadow_refresh_every</label><input id="a-refresh" type="number" value="4" min="1">
+          <p class="fdesc" id="ad-refresh"></p></div>
+        <div><label>uniform_floor</label><input id="a-floor" type="number" value="0.25" min="0.05" max="0.9" step="0.05">
+          <p class="fdesc" id="ad-floor"></p></div>
+        <div><label>block_size</label><input id="a-block" type="number" value="512" min="64">
+          <p class="fdesc" id="ad-block"></p></div>
+        <div><label>max_grad_norm</label><input id="a-clip" type="number" value="1.0" step="0.1">
+          <p class="fdesc" id="ad-clip"></p></div>
+      </div>
+      <p class="hint" id="h-ascot"></p>
+    </details>
+  </div>
+  <div class="card">
+    <h2 id="t-log-ckpt">ログとチェックポイント</h2>
+    <div class="grid3">
+      <div><label id="l-logevery"></label><input id="c-logevery" type="number" value="1" min="1"></div>
+      <div><label id="l-ckpt-every"></label><input id="c-every" type="number" value="100" min="0"></div>
+      <div><label id="l-ckpt-keep"></label><input id="c-keep" type="number" value="2" min="1"></div>
+      <div><label id="l-ckpt-mile"></label><input id="c-mile" type="number" value="500" min="0"></div>
+      <div><label id="l-ckpt-opt"></label><select id="c-opt"><option value="false">OFF（軽量・推奨）</option><option value="true">ON（完全再開）</option></select></div>
+      <div><label id="l-gn"></label><select id="c-gn"><option value="true">ON</option><option value="false">OFF</option></select></div>
+      <div><label id="l-mem"></label><select id="c-mem"><option value="true">ON</option><option value="false">OFF</option></select></div>
+      <div><label id="l-export-name"></label><input id="c-exportname" value="finetuned"></div>
+      <div><label id="l-autoexport"></label><select id="c-autoexport"><option value="true">ON（推奨）</option><option value="false">OFF</option></select></div>
+      <div><label id="l-deltadtype"></label><select id="c-deltadtype">
+        <option value="int8" selected>int8（差分・推奨 / delta）</option>
+        <option value="bfloat16">bfloat16（差分 / delta）</option>
+        <option value="float16">float16（差分 / delta）</option>
+        <option value="float32">float32（差分 / delta）</option>
+      </select></div>
+      <div><label id="l-plots"></label><select id="c-plots"><option value="true">ON</option><option value="false">OFF</option></select></div>
+    </div>
+    <p class="hint" id="h-ckpt"></p>
+  </div>
+  <div class="card">
+    <h2 id="t-cli-export"></h2>
+    <p class="hint" id="h-cli-export"></p>
+    <div class="row">
+      <button id="btn-cli-export"></button>
+      <button id="btn-cli-copy" disabled></button>
+      <button id="btn-cli-download" disabled></button>
+    </div>
+    <pre id="cli-command" class="preview" style="max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all"></pre>
+  </div>
+  <div class="card startbox">
+    <div id="start-note" class="hint"></div>
+    <div class="row">
+      <button id="btn-start" class="primary big">学習開始</button>
+      <label style="margin-left:16px"><input type="checkbox" id="resume" checked> <span id="l-resume"></span></label>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== RESULTS ============================== -->
+<section id="tab-results" class="tab">
+  <div class="card">
+    <h2 id="t-results">学習結果</h2>
+    <div class="row">
+      <select id="run-select"></select>
+      <button id="btn-refresh">更新</button>
+    </div>
+    <div id="result-summary" class="info-grid"></div>
+    <div id="result-events"></div>
+    <div id="result-plots"></div>
+    <div id="result-order"></div>
+    <div class="charts">
+      <div><h3 id="t-chart-loss">損失</h3><canvas id="chart-loss" width="640" height="260"></canvas></div>
+      <div><h3 id="t-chart-val">検証CE</h3><canvas id="chart-val" width="640" height="260"></canvas></div>
+      <div><h3 id="t-chart-lr">学習率の推移</h3><canvas id="chart-lr" width="640" height="260"></canvas></div>
+      <div><h3 id="t-chart-grad">勾配ノルムの推移</h3><canvas id="chart-grad" width="640" height="260"></canvas></div>
+    </div>
+    <details id="result-log-box" style="margin-top:12px">
+      <summary id="t-result-log">学習ログ（末尾）</summary>
+      <pre id="result-log" class="preview" style="max-height:420px;overflow:auto"></pre>
+    </details>
+  </div>
+  <div class="card">
+    <h2 id="t-gen">生成テスト</h2>
+    <div class="row">
+      <select id="gen-model-suggest" style="min-width:280px"></select>
+      <input id="gen-model" style="flex:1" placeholder="exports/finetuned またはモデルのパス">
+    </div>
+    <div class="row">
+      <input id="gen-prompt" style="flex:1" placeholder="質問 / prompt">
+      <label><input type="checkbox" id="gen-compare" checked> <span id="l-gen-compare"></span></label>
+      <button id="btn-gen" class="primary">生成</button>
+    </div>
+    <p class="hint" id="h-gen"></p>
+    <div id="gen-out" class="preview"></div>
+    <div id="gen-compare-out" class="compare-grid" style="display:none">
+      <div><h3 id="t-gen-base"></h3><div id="gen-base-out" class="preview"></div></div>
+      <div><h3 id="t-gen-tuned"></h3><div id="gen-tuned-out" class="preview"></div></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+torch>=2.3
+transformers>=5.12
+datasets>=3.0
+safetensors>=0.4
+sentencepiece>=0.1.99
+numpy>=1.26
+tqdm>=4.66
+matplotlib>=3.8
